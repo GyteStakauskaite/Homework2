@@ -1,0 +1,56 @@
+HW2 KOMANDOS:
+
+Genomo indeksavimas:
+conda activate bwameth_env
+bwameth.py index ~/HW1/references/GRCh38.primary_assembly.genome.fa
+
+Raw data Fastqc:
+mkdir fastqc_results
+fastqc *.fastq.gz -o ~/HW2/raw_data/fastqc_results
+
+Trim:
+mkdir trimmed
+trim_galore -j 6 --paired --gzip --fastqc SRR11647648_1.fastq.gz SRR11647648_2.fastq.gz -o trimmed/
+trim_galore -j 6 --paired --gzip --fastqc SRR11647650_1.fastq.gz SRR11647650_2.fastq.gz -o trimmed/
+trim_galore -j 6 --paired --gzip --fastqc SRR11647658_1.fastq.gz SRR11647658_2.fastq.gz -o trimmed/
+trim_galore -j 6 --paired --gzip --fastqc SRR11647660_1.fastq.gz SRR11647660_2.fastq.gz -o trimmed/
+
+Mapping:
+mkdir mapping_results
+bsmap -a ../raw_data/trimmed/SRR11647650_1_val_1.fq.gz -b ../raw_data/trimmed/SRR11647650_2_val_2.fq.gz -d ../../HW1/references/GRCh38.primary_assembly.genome.fa -o SRR11647650.bam -p 4  
+bsmap -a ../raw_data/trimmed/SRR11647658_1_val_1.fq.gz -b ../raw_data/trimmed/SRR11647658_2_val_2.fq.gz -d ../../HW1/references/GRCh38.primary_assembly.genome.fa -o SRR11647658.bam -p 4   
+bsmap -a ../raw_data/trimmed/SRR11647648_1_val_1.fq.gz -b ../raw_data/trimmed/SRR11647648_2_val_2.fq.gz -d ../../HW1/references/GRCh38.primary_assembly.genome.fa -o SRR11647648.bam -p 4   
+bsmap -a ../raw_data/trimmed/SRR11647660_1_val_1.fq.gz -b ../raw_data/trimmed/SRR11647660_2_val_2.fq.gz -d ../../HW1/references/GRCh38.primary_assembly.genome.fa -o SRR11647660.bam -p 4  
+
+Sort:
+samtools sort -@ 6 SRR11647648.bam -o SRR11647648.sorted.bam
+samtools sort -@ 6 SRR11647650.bam -o SRR11647650.sorted.bam
+samtools sort -@ 6 SRR11647658.bam -o SRR11647658.sorted.bam
+samtools sort -@ 6 SRR11647660.bam -o SRR11647660.sorted.bam 
+
+Kažkas:
+picard AddOrReplaceReadGroups     I=SRR11647660.sorted.bam     O=SRR11647660.rg.bam     RGID=SRR11647660     RGLB=SRR11647660     RGPL=ILLUMINA     RGPU=SRR11647660     RGSM=SRR11647660
+picard AddOrReplaceReadGroups     I=SRR11647658.sorted.bam     O=SRR11647658.rg.bam     RGID=SRR11647658     RGLB=SRR11647658     RGPL=ILLUMINA     RGPU=SRR11647658     RGSM=SRR11647658
+picard AddOrReplaceReadGroups     I=SRR11647650.sorted.bam     O=SRR11647650.rg.bam     RGID=SRR11647650     RGLB=SRR11647650     RGPL=ILLUMINA     RGPU=SRR11647650     RGSM=SRR11647650
+picard AddOrReplaceReadGroups     I=SRR11647648.sorted.bam     O=SRR11647648.rg.bam     RGID=SRR11647648     RGLB=SRR11647648     RGPL=ILLUMINA     RGPU=SRR11647648     RGSM=SRR11647648
+
+
+Duplikatai: (nešalinti, pasakyti procentą tik)
+conda create -n picard_env bioconda::picard
+conda activate picard_env
+picard MarkDuplicates I=SRR11647648.rg.bam O=SRR11647648dedp.bam M=48metrics.txt REMOVE_DUPLICATES=false
+picard MarkDuplicates I=SRR11647650.rg.bam O=SRR11647650dedp.bam M=50metrics.txt REMOVE_DUPLICATES=false
+picard MarkDuplicates I=SRR11647658.rg.bam O=SRR11647658dedp.bam M=58metrics.txt REMOVE_DUPLICATES=false
+picard MarkDuplicates I=SRR11647660.rg.bam O=SRR11647660dedp.bam M=60metrics.txt REMOVE_DUPLICATES=false
+
+Methylation calling:
+conda activate methyldackel_env
+MethylDackel mbias ../../HW1/references/GRCh38.primary_assembly.genome.fa ~/HW2/mapping_results/SRR11647648dedp.bam SRR11647648mbias_plot
+MethylDackel mbias ../../HW1/references/GRCh38.primary_assembly.genome.fa ~/HW2/mapping_results/SRR11647650dedp.bam SRR11647650mbias_plot
+MethylDackel mbias ../../HW1/references/GRCh38.primary_assembly.genome.fa ~/HW2/mapping_results/SRR11647658dedp.bam SRR11647658mbias_plot
+MethylDackel mbias ../../HW1/references/GRCh38.primary_assembly.genome.fa ~/HW2/mapping_results/SRR11647660dedp.bam SRR11647660mbias_plot
+
+MethylDackel extract --OT 0,0,2,120 --OB 2,0,6,124 ../../HW1/references/GRCh38.primary_assembly.genome.fa SRR11647648dedp.bam -r chr20 -o SRR11647648_methylation
+MethylDackel extract --OT 3,0,2,120 --OB 2,0,5,124 ../../HW1/references/GRCh38.primary_assembly.genome.fa SRR11647650dedp.bam -r chr20 -o SRR11647650_methylation
+MethylDackel extract --OT 3,0,2,119 --OB 2,123,6,124 ../../HW1/references/GRCh38.primary_assembly.genome.fa SRR11647658dedp.bam -r chr20 -o SRR11647658_methylation
+MethylDackel extract --OT 3,0,2,120 --OB 2,123,5,124 ../../HW1/references/GRCh38.primary_assembly.genome.fa SRR11647660dedp.bam -r chr20 -o SRR11647660_methylation
